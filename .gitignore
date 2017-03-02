@@ -1,0 +1,11 @@
+*~
+*.a
+*.o
+*.org
+*.png
+.deps
+.dirstamp
+GPATH
+GRTAGS
+GTAGS
+t
