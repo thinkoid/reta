@@ -296,7 +296,7 @@ make_dfa (const nfa_t& nfa) {
     //
     // Start from the epsilon closure of the start state:
     //
-    const auto initial_closure = epsilon_closure (nfa, nfa.start);
+    auto initial_closure = epsilon_closure (nfa, nfa.start);
     set< set< size_t > > closures { initial_closure };
 
     //
@@ -304,9 +304,16 @@ make_dfa (const nfa_t& nfa) {
     //
     dfa_state.closures.emplace (initial_closure, state_counter++);
 
-    while (!closures.empty ()) {
-        cout << " --> " << closures << "\n";
+    //
+    // Compute the acceptance state:
+    //
+    dfa_state.states [0].accept = any_of (
+        initial_closure.begin (), initial_closure.end (),
+        [&](const auto i) {
+            return nfa.states [i].accept;
+        });
 
+    while (!closures.empty ()) {
         //
         // Accumulate all new closures as they are computed:
         //

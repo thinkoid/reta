@@ -1,7 +1,16 @@
 # -*- mode: Makefile; -*-
 
-CXXFLAGS = -g -O -std=c++1z -W -Wall
-LDFLAGS =
+BENCHMARK_CPPFLAGS = -I/usr/local/include
+BENCHMARK_LDFLAGS  = -L/usr/local/lib
+
+BENCHMARK_LIBS = -lbenchmark
+
+CXXFLAGS = -g -O -std=c++1z -W -Wall -pthread
+
+CPPFLAGS = $(BENCHMARK_CPPFLAGS)
+LDFLAGS = $(BENCHMARK_LDFLAGS) -pthread
+
+LIBS = $(BENCHMARK_LIBS)
 
 DEPENDDIR = ./.deps
 DEPENDFLAGS = -M
@@ -17,7 +26,7 @@ DEPS = $(patsubst %.o,$(DEPENDDIR)/%.d,$(OBJS))
 -include $(DEPS)
 
 $(DEPENDDIR)/%.d: %.c $(DEPENDDIR)
-	$(CXX) $(CXXFLAGS) $(DEPENDFLAGS) $< >$@
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(DEPENDFLAGS) $< >$@
 
 $(DEPENDDIR):
 	@[ ! -d $(DEPENDDIR) ] && mkdir -p $(DEPENDDIR)
@@ -25,10 +34,10 @@ $(DEPENDDIR):
 %: %.cpp
 
 %: %.o
-	$(CXX) $(LDFLAGS) -o $@ $^
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
 .PHONY: clean
 
