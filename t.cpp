@@ -169,6 +169,56 @@ nfa_consume_kleene_closure (nfa_state_t& state) {
 }
 
 static void
+nfa_consume_optional (nfa_state_t& state) {
+    auto& nfa = state.nfa;
+
+    nfa.states.push_back (default_nfa_state);
+    nfa.states.push_back (default_nfa_state);
+
+    const auto n = state.nfa.states.size ();
+    const auto beg = n - 2, end = n - 1;
+
+    auto& st = state.st;
+    assert (1 < st.size ());
+
+    int b = st.top (); st.pop ();
+    int a = st.top (); st.pop ();
+
+    nfa.states [beg].e.push_back (a);
+    nfa.states [beg].e.push_back (end);
+
+    nfa.states [b].e.push_back (end);
+
+    st.push (beg);
+    st.push (end);
+}
+
+static void
+nfa_consume_multiple (nfa_state_t& state) {
+    auto& nfa = state.nfa;
+
+    nfa.states.push_back (default_nfa_state);
+    nfa.states.push_back (default_nfa_state);
+
+    const auto n = state.nfa.states.size ();
+    const auto beg = n - 2, end = n - 1;
+
+    auto& st = state.st;
+    assert (1 < st.size ());
+
+    int b = st.top (); st.pop ();
+    int a = st.top (); st.pop ();
+
+    nfa.states [beg].e.push_back (a);
+
+    nfa.states [b].e.push_back (a);
+    nfa.states [b].e.push_back (end);
+
+    st.push (beg);
+    st.push (end);
+}
+
+static void
 nfa_consume_alternation (nfa_state_t& state) {
     auto& nfa = state.nfa;
 
@@ -208,6 +258,14 @@ make_nfa (const string& s) {
 
         case '*':
             nfa_consume_kleene_closure (state);
+            break;
+
+        case '?':
+            nfa_consume_optional (state);
+            break;
+
+        case '+':
+            nfa_consume_multiple (state);
             break;
 
         case '.':
