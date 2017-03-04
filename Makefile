@@ -8,7 +8,7 @@ BENCHMARK_LIBS = -lbenchmark
 CXXFLAGS = -g -O -std=c++1z -W -Wall -pthread
 
 CPPFLAGS = $(BENCHMARK_CPPFLAGS)
-LDFLAGS = $(BENCHMARK_LDFLAGS) -pthread
+LDFLAGS = -pthread $(BENCHMARK_LDFLAGS)
 
 LIBS = $(BENCHMARK_LIBS)
 

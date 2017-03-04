@@ -1,9 +1,11 @@
 // -*- mode: c++; -*-
 
 #include <cassert>
+#include <cmath>
 
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
 #include <iterator>
 #include <map>
 #include <queue>
@@ -282,8 +284,8 @@ make_nfa (const string& s) {
         }
     }
 
-    const auto last = state.st.top (); state.st.pop ();
-    state.nfa.states [last].accept = true;
+    state.nfa.states [state.st.top ()].accept = true;
+    state.st.pop ();
 
     state.nfa.start = state.st.top ();
 
@@ -329,19 +331,19 @@ epsilon_closure (const nfa_t& nfa, size_t n) {
 
 namespace std {
 
-static ostream&
-operator<< (ostream& s, const set< size_t >& arg) {
-    s << "{ ";
-    copy (arg.begin (), arg.end (), ostream_iterator< size_t > (s, " "));
-    return s << "}";
-}
+// static ostream&
+// operator<< (ostream& s, const set< size_t >& arg) {
+//     s << "{ ";
+//     copy (arg.begin (), arg.end (), ostream_iterator< size_t > (s, " "));
+//     return s << "}";
+// }
 
-static ostream&
-operator<< (ostream& s, const set< set< size_t > >& arg) {
-    s << "{ ";
-    copy (arg.begin (), arg.end (), ostream_iterator< set< size_t > > (s, " "));
-    return s << "}";
-}
+// static ostream&
+// operator<< (ostream& s, const set< set< size_t > >& arg) {
+//     s << "{ ";
+//     copy (arg.begin (), arg.end (), ostream_iterator< set< size_t > > (s, " "));
+//     return s << "}";
+// }
 
 }
 
@@ -417,11 +419,9 @@ make_dfa (const nfa_t& nfa) {
                 // Store the newly computed state in the state object of
                 // the DFA construction algorithm:
                 //
-                const auto
-                    iter = dfa_state.closures.find (s),
-                    last = dfa_state.closures.end ();
+                const auto iter = dfa_state.closures.find (s);
 
-                if (iter == last) {
+                if (iter == dfa_state.closures.end ()) {
                     to = state_counter++;
                     dfa_state.closures.emplace (s, to);
 
@@ -556,10 +556,133 @@ private:
 
 ////////////////////////////////////////////////////////////////////////
 
-int main (int, char** argv) {
-    const string r (argv [1]);
+template< typename T >
+struct matrix_t {
+    using value_type = T;
 
+    explicit matrix_t (size_t n)
+        : value (n * n, value_type { }), size (n)
+        { }
+
+    value_type& at (size_t i, size_t j) {
+        return value [i * size + j];
+    }
+
+    const value_type& at (size_t i, size_t j) const {
+        return value [i * size + j];
+    }
+
+    vector< value_type > value;
+    size_t size;
+};
+
+template< typename T >
+ostream&
+operator<< (ostream& s, const matrix_t< T >& m) {
+    const auto n = m.size;
+
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j)
+            cout << m.at (i, j) << " ";
+
+        cout << "\n";
+    }
+
+    cout << "\n";
+
+    return s;
+}
+
+template< typename T >
+matrix_t< T >
+operator* (const matrix_t< T >& lhs, const matrix_t< T >& rhs) {
+    const auto n = lhs.size;
+
+    matrix_t< T > m (n);
+
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t j = 0; j < n; ++j) {
+            T accum { };
+
+            for (size_t k = 0; k < n; ++k)
+                accum += lhs.at (i, k) * rhs.at (k, j);
+
+            m.at (i, j) = accum;
+        }
+    }
+
+    return m;
+}
+
+template< typename T >
+inline matrix_t< T >
+identity_matrix (size_t n) {
+    matrix_t< T > m (n);
+
+    for (size_t i = 0; i < n; ++i)
+        m.at (i, i) = T (1);
+
+    return m;
+}
+
+template< typename T >
+matrix_t< T >
+pow (const matrix_t< T >& m, size_t n) {
+    const auto size = m.size;
+
+    if (0 == n)
+        return identity_matrix< T > (size);
+    else if (1 == n)
+        return m;
+    else if (0 == n % 2) {
+        return pow (m * m, n/2);
+    }
+    else {
+        return m * pow (m * m, (n - 1)/2);
+    }
+}
+
+static size_t
+howmanys (const dfa_t& dfa, size_t k) {
+    const auto n = dfa.states.size ();
+
+    matrix_t< long double > m (n);
+
+    for (size_t i = 0; i < n; ++i) {
+        const auto& state = dfa.states [i];
+
+        for (size_t j = 0; j < n; ++j) {
+            size_t n = 0;
+
+            if (j == state.a [0]) ++n;
+            if (j == state.a [1]) ++n;
+
+            m.at (i, j) = double (n)/2;
+        }
+    }
+
+    cout << m << endl;
+    m = pow (m, k);
+    cout << m << endl;
+
+    long double result { };
+
+    for (size_t i = 0; i < n; ++i) {
+        const auto& state = dfa.states [i];
+
+        if (state.accept)
+            result += m.at (0, i);
+    }
+
+    return (result * pow (2, k));
+}
+
+////////////////////////////////////////////////////////////////////////
+
+static size_t
+test (const string& r, size_t k) {
     const string s = postfix (r);
+
     cout << "#\n# postfixed expression : " << r << "  -->  "
          << s << "\n#\n\n";
 
@@ -569,5 +692,10 @@ int main (int, char** argv) {
     const auto dfa = make_dfa (nfa);
     cout << dot_graph_t (dfa).value () << "\n\n";
 
+    return size_t (howmanys (dfa, k));
+}
+
+int main (int, char** argv) {
+    cout << test (argv [1], atol (argv [2])) << endl;
     return 0;
 }
