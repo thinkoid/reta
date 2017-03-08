@@ -582,8 +582,61 @@ private:
 
 ////////////////////////////////////////////////////////////////////////
 
+#if 1
+
+#include <benchmark/benchmark.h>
+
+static const vector< string > test_data {
+    "a",
+    "a*",
+    "a*b",
+    "ab*",
+    "a|b",
+    "(a*|b)",
+    "(a|b*)",
+    "(a|b)*"
+    "(((a|b)*)a)",
+    "((((a|b)*)a)(a|b))",
+    "(((((a|b)*)a)(a|b))(a|b))",
+    "((((((a|b)*)a)(a|b))(a|b))(a|b))",
+    "(((((((a|b)*)a)(a|b))(a|b))(a|b))(a|b))",
+    "((((((((a|b)*)a)(a|b))(a|b))(a|b))(a|b))(a|b))",
+    "(((((((((a|b)*)a)(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))",
+    "((((((((((a|b)*)a)(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))",
+    "(((((((((((a|b)*)a)(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))",
+    "((((((((((((a|b)*)a)(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))",
+    "(((((((((((((a|b)*)a)(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))",
+    "((((((((((((((a|b)*)a)(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))(a|b))"
+};
+
 static void
-test (const string& r) {
+BM_nfa (benchmark::State& state) {
+    const auto s = postfix (test_data [state.range (0)]);
+
+    while (state.KeepRunning ())
+        benchmark::DoNotOptimize (make_nfa (s));
+}
+
+BENCHMARK (BM_nfa)->DenseRange (0, test_data.size () - 1);
+
+static void
+BM_dfa (benchmark::State& state) {
+    const auto s = postfix (test_data [state.range (0)]);
+    const auto nfa = make_nfa (s);
+
+    while (state.KeepRunning ())
+        benchmark::DoNotOptimize (make_dfa (nfa));
+}
+
+BENCHMARK (BM_dfa)->DenseRange (0, test_data.size () - 1);
+
+BENCHMARK_MAIN();
+
+#else
+
+int main (int, char** argv) {
+    const string r (argv [1]);
+
     const string s = postfix (r);
 
     cout << "#\n# postfixed expression : " << r << "  -->  "
@@ -594,8 +647,8 @@ test (const string& r) {
 
     const auto dfa = make_dfa (nfa);
     cout << dot_graph_t (dfa).value () << "\n\n";
+
+    return 0;
 }
 
-int main (int, char** argv) {
-    return test (argv [1]), 0;
-}
+#endif
