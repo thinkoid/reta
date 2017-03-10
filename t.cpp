@@ -17,29 +17,40 @@
 
 using namespace std;
 
-static inline size_t
-size_cast (char c) {
-    return size_t ((unsigned char)c);
+template< typename T >
+inline size_t size_cast (T c) {
+    return size_t (typename make_unsigned< T >::type (c));
 }
 
-static const auto first_less = [](const auto& lhs, const auto& rhs) {
+/* static */ const auto first_less = [](const auto& lhs, const auto& rhs) {
     return lhs.first < rhs.first;
+};
+
+static const int alphabet [] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 4, 0, 0, 5, 0,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 3,
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 6, 0, 0, 0
 };
 
 ////////////////////////////////////////////////////////////////////////
 
 struct nfa_t {
-    struct state_t {
-        vector< pair< size_t, size_t > > a;
-        vector< size_t > e;
-        bool accept;
-    };
+    using  int_type = int;
+    using size_type = size_t;
 
-    vector< state_t > states;
-    size_t start;
+    vector< vector< pair< int_type, size_type > > > states;
+    vector< size_type > accept;
+    size_type start;
+
+    static constexpr int_type epsilon = -1;
 };
 
-const auto default_nfa_state = nfa_t::state_t { };
+/* static */ constexpr nfa_t::int_type nfa_t::epsilon /* = -1 */;
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -119,28 +130,22 @@ namespace detail {
 
 struct nfa_state_t {
     nfa_t nfa;
-    stack< int > st;
+    stack< size_t > st;
 };
 
 static void
 nfa_consume_literal (int c, nfa_state_t& state) {
     auto& nfa = state.nfa;
 
-    nfa.states.push_back (default_nfa_state);
-    nfa.states.push_back (default_nfa_state);
+    const auto n = nfa.states.size ();
 
-    const auto n = state.nfa.states.size ();
-    const auto beg = n - 2, end = n - 1;
-
-    auto& a = nfa.states [beg].a;
-    a.emplace_back (c, end);
-
-    sort (a.begin (), a.end (), first_less);
+    nfa.states.resize (n + 2);
+    nfa.states [n].emplace_back (c, n + 1);
 
     auto& st = state.st;
 
-    st.push (beg);
-    st.push (end);
+    st.push (n);
+    st.push (n + 1);
 }
 
 static void
@@ -148,14 +153,13 @@ nfa_consume_concatenation (nfa_state_t& state) {
     auto& st = state.st;
     assert (3 < st.size ());
 
-    int d = st.top (); st.pop ();
-    int c = st.top (); st.pop ();
-    int b = st.top (); st.pop ();
-    int a = st.top (); st.pop ();
+    const size_t d = st.top (); st.pop ();
+    const size_t c = st.top (); st.pop ();
+    const size_t b = st.top (); st.pop ();
+    const size_t a = st.top (); st.pop ();
 
     auto& nfa = state.nfa;
-
-    nfa.states [b].e.push_back (c);
+    nfa.states [b].emplace_back (nfa_t::epsilon, c);
 
     st.push (a);
     st.push (d);
@@ -165,127 +169,106 @@ static void
 nfa_consume_kleene_closure (nfa_state_t& state) {
     auto& nfa = state.nfa;
 
-    nfa.states.push_back (default_nfa_state);
-    nfa.states.push_back (default_nfa_state);
-
     const auto n = state.nfa.states.size ();
-    const auto beg = n - 2, end = n - 1;
+    nfa.states.resize (n + 2);
 
     auto& st = state.st;
     assert (1 < st.size ());
 
-    int b = st.top (); st.pop ();
-    int a = st.top (); st.pop ();
+    const size_t b = st.top (); st.pop ();
+    const size_t a = st.top (); st.pop ();
 
-    nfa.states [beg].e.push_back (a);
-    nfa.states [beg].e.push_back (end);
+    auto& states = nfa.states;
 
-    nfa.states [b].e.push_back (a);
-    nfa.states [b].e.push_back (end);
+    states [n].emplace_back (nfa_t::epsilon, a);
+    states [n].emplace_back (nfa_t::epsilon, n + 1);
 
-    st.push (beg);
-    st.push (end);
+    states [b].emplace_back (nfa_t::epsilon, a);
+    states [b].emplace_back (nfa_t::epsilon, n + 1);
+
+    st.push (n);
+    st.push (n + 1);
 }
 
 static void
 nfa_consume_optional (nfa_state_t& state) {
     auto& nfa = state.nfa;
 
-    nfa.states.push_back (default_nfa_state);
-    nfa.states.push_back (default_nfa_state);
-
     const auto n = state.nfa.states.size ();
-    const auto beg = n - 2, end = n - 1;
+    nfa.states.resize (n + 2);
 
     auto& st = state.st;
     assert (1 < st.size ());
 
-    int b = st.top (); st.pop ();
-    int a = st.top (); st.pop ();
+    const size_t b = st.top (); st.pop ();
+    const size_t a = st.top (); st.pop ();
 
-    nfa.states [beg].e.push_back (a);
-    nfa.states [beg].e.push_back (end);
+    nfa.states [n].emplace_back (nfa_t::epsilon, a);
+    nfa.states [n].emplace_back (nfa_t::epsilon, n + 1);
 
-    nfa.states [b].e.push_back (end);
+    nfa.states [b].emplace_back (nfa_t::epsilon, n + 1);
 
-    st.push (beg);
-    st.push (end);
+    st.push (n);
+    st.push (n + 1);
 }
 
 static void
 nfa_consume_multiple (nfa_state_t& state) {
     auto& nfa = state.nfa;
 
-    nfa.states.push_back (default_nfa_state);
-    nfa.states.push_back (default_nfa_state);
-
     const auto n = state.nfa.states.size ();
-    const auto beg = n - 2, end = n - 1;
+    nfa.states.resize (n + 2);
 
     auto& st = state.st;
     assert (1 < st.size ());
 
-    int b = st.top (); st.pop ();
-    int a = st.top (); st.pop ();
+    const size_t b = st.top (); st.pop ();
+    const size_t a = st.top (); st.pop ();
 
-    nfa.states [beg].e.push_back (a);
+    nfa.states [n].emplace_back (nfa_t::epsilon, a);
 
-    nfa.states [b].e.push_back (a);
-    nfa.states [b].e.push_back (end);
+    nfa.states [b].emplace_back (nfa_t::epsilon, a);
+    nfa.states [b].emplace_back (nfa_t::epsilon, n + 1);
 
-    st.push (beg);
-    st.push (end);
+    st.push (n);
+    st.push (n + 1);
 }
 
 static void
 nfa_consume_alternation (nfa_state_t& state) {
     auto& nfa = state.nfa;
 
-    nfa.states.push_back (default_nfa_state);
-    nfa.states.push_back (default_nfa_state);
-
     const auto n = state.nfa.states.size ();
-    const auto beg = n - 2, end = n - 1;
+    nfa.states.resize (n + 2);
 
     auto& st = state.st;
     assert (3 < st.size ());
 
-    int d = st.top (); st.pop ();
-    int c = st.top (); st.pop ();
-    int b = st.top (); st.pop ();
-    int a = st.top (); st.pop ();
+    const size_t d = st.top (); st.pop ();
+    const size_t c = st.top (); st.pop ();
+    const size_t b = st.top (); st.pop ();
+    const size_t a = st.top (); st.pop ();
 
-    nfa.states [beg].e.push_back (a);
-    nfa.states [beg].e.push_back (c);
+    nfa.states [n].emplace_back (nfa_t::epsilon, a);
+    nfa.states [n].emplace_back (nfa_t::epsilon, c);
 
-    nfa.states [b].e.push_back (end);
-    nfa.states [d].e.push_back (end);
+    nfa.states [b].emplace_back (nfa_t::epsilon, n + 1);
+    nfa.states [d].emplace_back (nfa_t::epsilon, n + 1);
 
-    st.push (beg);
-    st.push (end);
+    st.push (n);
+    st.push (n + 1);
 }
 
-}
+} // namespace detail
 
 static nfa_t
 make_nfa (const string& s) {
     detail::nfa_state_t state;
 
-    static const int arr [] = {
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 4, 0, 0, 5, 0,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 3,
-        0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
-        0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 6, 0, 0, 0
-    };
-
     for (const auto c : s) {
         assert (0 <= c && c <= (numeric_limits< char >::max) ());
 
-        switch (arr [size_cast (c)]) {
+        switch (alphabet [size_cast (c)]) {
         case 1:
             nfa_consume_literal (c, state);
             break;
@@ -316,42 +299,51 @@ make_nfa (const string& s) {
         }
     }
 
-    state.nfa.states [state.st.top ()].accept = true;
+    auto& nfa = state.nfa;
+
+    nfa.accept.emplace_back (state.st.top ());
     state.st.pop ();
 
-    state.nfa.start = state.st.top ();
+    nfa.start = state.st.top ();
 
-    return state.nfa;
+    return move (nfa);
 }
 
 ////////////////////////////////////////////////////////////////////////
 
-static constexpr auto npos = size_t (-1);
-
 struct dfa_t {
-    struct state_t {
-        vector< pair< size_t, size_t > > a;
-        bool accept = false;
-    };
+    using  int_type = int;
+    using size_type = size_t;
 
-    vector< state_t > states;
+    vector< vector< pair< int_type, size_type > > > states;
+    vector< size_type > accept;
 };
 
 namespace detail {
 
 struct dfa_state_t {
-    map< set< size_t >, size_t > closures;
-    map< size_t, dfa_t::state_t > states;
+    using int_type = int;
+    using size_type = size_t;
+
+    map< set< size_type >, size_type > closures;
+    map< size_type, vector< pair< int_type, size_type > > > transitions;
+    vector< size_type > accept;
 };
 
 static void
 do_epsilon_closure (const nfa_t& nfa, size_t state, set< size_t >& closure) {
-    for (const auto i : nfa.states [state].e) {
-        const auto iter = closure.find (i);
+    for (const auto& t : nfa.states [state]) {
+        const auto c = t.first;
 
-        if (iter == closure.end ()) {
-            closure.insert (i);
-            do_epsilon_closure (nfa, i, closure);
+        if (c == nfa_t::epsilon) {
+            const auto dst = t.second;
+
+            const auto iter = closure.find (dst);
+
+            if (iter == closure.end ()) {
+                closure.insert (dst);
+                do_epsilon_closure (nfa, dst, closure);
+            }
         }
     }
 }
@@ -363,139 +355,87 @@ epsilon_closure (const nfa_t& nfa, size_t n) {
     return closure;
 }
 
-static set< size_t >
-transitions (const vector< pair< size_t, size_t > >& a, size_t i) {
-    set< size_t > s;
+static inline bool
+accepting (const nfa_t& nfa, const set< size_t >& c) {
+    const auto& a = nfa.accept;
 
-    const auto value = pair< size_t, size_t > { i, { } };
-
-    auto lo = lower_bound (a.begin (), a.end (), value, first_less);
-
-    if (lo != a.end ()) {
-        const auto hi = upper_bound (lo, a.end (), value, first_less);
-
-        transform (
-            lo, hi, inserter (s, s.end ()),
-            [](auto&& x) { return x.second; });
-    }
-
-    return s;
+    return any_of (c.begin (), c.end (), [&](const auto n) {
+        return a.end () == find (a.begin (), a.end (), n);
+    });
 }
 
-}
+} // namespace detail
 
 static dfa_t
 make_dfa (const nfa_t& nfa) {
-    size_t state_counter = 0;
-
     detail::dfa_state_t dfa_state { };
 
-    //
-    // Start from the epsilon closure of the start state:
-    //
-    auto initial_closure = detail::epsilon_closure (nfa, nfa.start);
-    set< set< size_t > > closures { initial_closure };
+    set< set< size_t > > closures { detail::epsilon_closure (nfa, nfa.start) };
+    const auto& initial_closure = *closures.begin ();
 
-    //
-    // Update the closure-to-state-number map:
-    //
-    dfa_state.closures.emplace (initial_closure, state_counter++);
+    size_t state_counter = 0;
+    dfa_state.closures.emplace (initial_closure, state_counter);
 
-    //
-    // Compute the acceptance state:
-    //
-    dfa_state.states [0].accept = any_of (
-        initial_closure.begin (), initial_closure.end (),
-        [&](const auto i) {
-            return nfa.states [i].accept;
-        });
+    if (detail::accepting (nfa, initial_closure))
+        dfa_state.accept.emplace_back (state_counter);
+
+    ++state_counter;
 
     while (!closures.empty ()) {
-        //
-        // Accumulate all new closures as they are computed:
-        //
         set< set< size_t > > accum;
 
         for (const auto& closure : closures) {
+            map< int, set< size_t > > transitions;
+
             const auto from = dfa_state.closures [closure];
 
-            for (size_t i = 0; i < (numeric_limits< char >::max) (); ++i) {
-                set< size_t > s;
+            for (const auto state : closure) {
+                for (const auto& t : nfa.states [state]) {
+                    if (nfa_t::epsilon == t.first)
+                        continue;
 
-                for (const auto state : closure) {
-                    const auto& a = nfa.states [state].a;
-
-                    //
-                    // Start from the sorted set of states that are direct
-                    // transitions under `i':
-                    //
-                    set< size_t > t = detail::transitions (a, i);
-
-                    //
-                    // Merge all epsilon closures of all states that are
-                    // reachable under input `i':
-                    //
-                    for (const auto state : t) {
-                        const auto tmp = detail::epsilon_closure (nfa, state);
-                        s.insert (tmp.begin (), tmp.end ());
-                    }
-
-                    //
-                    // Finally, merge the states reachable under `i':
-                    //
-                    s.insert (t.begin (), t.end ());
+                    const auto s = detail::epsilon_closure (nfa, t.second);
+                    transitions [t.first].insert (s.begin (), s.end ());
                 }
+            }
 
-                if (s.empty ())
-                    continue;
-
+            for (const auto& t : transitions) {
                 size_t to = 0;
 
-                //
-                // Store the newly computed state in the state object of
-                // the DFA construction algorithm:
-                //
-                const auto iter = dfa_state.closures.find (s);
+                const auto iter = dfa_state.closures.find (t.second);
 
                 if (iter == dfa_state.closures.end ()) {
                     to = state_counter++;
-                    dfa_state.closures.emplace (s, to);
+                    dfa_state.closures.emplace (t.second, to);
 
-                    //
-                    // Compute the acceptance state:
-                    //
-                    dfa_state.states [to].accept = any_of (
-                        s.begin (), s.end (),
-                        [&](const auto i) {
-                            return nfa.states [i].accept;
-                        });
+                    if (detail::accepting (nfa, t.second))
+                        dfa_state.accept.emplace_back (to);
 
-                    //
-                    // Collect this new state for the next proceessing
-                    // iteration:
-                    //
-                    accum.insert (s);
+                    accum.insert (t.second);
                 }
-                else
+                else {
                     to = iter->second;
+                }
 
-                //
-                // Store the transition:
-                //
-                dfa_state.states [from].a.emplace_back (i, to);
+                dfa_state.transitions [from].emplace_back (t.first, to);
             }
         }
 
         closures = accum;
     }
 
-    dfa_t dfa { };
+    dfa_t dfa;
 
-    transform (
-        dfa_state.states.begin (),
-        dfa_state.states.end (),
-        back_inserter (dfa.states),
-        [](const auto& arg) { return arg.second; });
+    for (auto& t : dfa_state.transitions)
+        dfa.states.emplace_back (move (t.second));
+
+    for (auto& t : dfa.states)
+        sort (t.begin (), t.end (), first_less);
+
+    dfa.accept = dfa_state.accept;
+
+    auto& a = dfa.accept;
+    sort (a.begin (), a.end ());
 
     return dfa;
 }
@@ -527,19 +467,22 @@ private:
         ss << "    start -> q" << nfa.start << ";\n";
 
         for (size_t i = 0; i < nfa.states.size (); ++i) {
-            for (const auto& x : nfa.states [i].a) {
-                ss << "    q" << i << " -> q" << x.second
-                   << "[label=\"" << char (x.first) << "\"];\n";
-            }
+            const auto& transitions = nfa.states [i];
 
-            for (const auto& x : nfa.states [i].e)
-                ss << "    q" << i << " -> q" << x << "[label=\"ϵ\";];\n";
+            for (const auto& t : transitions) {
+                ss << "    q" << i << " -> q" << t.second << "[label=\"";
 
-            if (nfa.states [i].accept) {
-                ss << "    q" << i << "[shape=doublecircle;rank="
-                   << nfa.states.size () << ";];\n";
+                if (0 > t.first)
+                    ss << "ϵ";
+                else
+                    ss << char (t.first);
+
+                ss << "\"];\n";
             }
         }
+
+        ss << "    q" << nfa.accept.front () << "[shape=doublecircle;rank="
+           << nfa.states.size () << ";];\n";
 
         ss << "}\n";
         ss << "#+END_SRC\n\n";
@@ -558,17 +501,16 @@ private:
         ss << "    start -> q0;\n";
 
         for (size_t i = 0; i < dfa.states.size (); ++i) {
-            const auto& state = dfa.states [i];
+            const auto& transitions = dfa.states [i];
 
-            for (const auto& x : state.a)
-                ss << "    q" << i << " -> q" << x.second
-                   << "[label=\"" << char (x.first) << "\"];\n";
-
-            if (state.accept) {
-                ss << "    q" << i << "[shape=doublecircle;rank="
-                   << dfa.states.size () << ";];\n";
-            }
+            for (const auto& t : transitions)
+                ss << "    q" << i << " -> q" << t.second << "[label=\""
+                   << char (t.first) << "\"];\n";
         }
+
+        for (const auto state : dfa.accept)
+            ss << "    q" << state << "[shape=doublecircle;rank="
+               << dfa.states.size () << ";];\n";
 
         ss << "}\n";
         ss << "#+END_SRC\n\n";
@@ -582,7 +524,7 @@ private:
 
 ////////////////////////////////////////////////////////////////////////
 
-#if 1
+#if 0
 
 #include <benchmark/benchmark.h>
 
@@ -632,15 +574,36 @@ BENCHMARK (BM_dfa)->DenseRange (0, test_data.size () - 1);
 
 BENCHMARK_MAIN();
 
-#else
+#elif 0
 
 int main (int, char** argv) {
-    const string r (argv [1]);
+    size_t ignore, i;
+    cin >> ignore;
 
-    const string s = postfix (r);
+    for (string s; cin >> s >> i;) {
+        cout << "# -->     regex : " << s << endl;
 
-    cout << "#\n# postfixed expression : " << r << "  -->  "
-         << s << "\n#\n\n";
+        s = postfix (s);
+        cout << "# --> postfixed : " << s << endl;
+
+        const auto nfa = make_nfa (s);
+        cout << dot_graph_t (nfa).value () << "\n\n";
+
+        const auto dfa = make_dfa (nfa);
+        cout << dot_graph_t (dfa).value () << "\n\n";
+    }
+
+    return 0;
+}
+
+#elif 1
+
+int main (int, char** argv) {
+    string s (argv [1]);
+    cout << "# -->     regex : " << s << endl;
+
+    s = postfix (s);
+    cout << "# --> postfixed : " << s << endl;
 
     const auto nfa = make_nfa (s);
     cout << dot_graph_t (nfa).value () << "\n\n";
