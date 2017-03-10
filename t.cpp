@@ -22,7 +22,7 @@ size_cast (char c) {
     return size_t ((unsigned char)c);
 }
 
-static const auto first_less = [](const auto& lhs, const auto& rhs) {
+const auto first_less = [](const auto& lhs, const auto& rhs) {
     return lhs.first < rhs.first;
 };
 
@@ -326,7 +326,7 @@ make_nfa (const string& s) {
 
 ////////////////////////////////////////////////////////////////////////
 
-static constexpr auto npos = size_t (-1);
+const auto npos = size_t (-1);
 
 struct dfa_t {
     struct state_t {
