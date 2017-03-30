@@ -15,10 +15,10 @@ LIBS = $(BENCHMARK_LIBS)
 DEPENDDIR = ./.deps
 DEPENDFLAGS = -M
 
-SRCS := t.cpp
+SRCS := nfa.cpp dfa.cpp dot_graph.cpp
 OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 
-TARGETS = $(patsubst %.o,%,$(OBJS))
+TARGETS = t
 
 all: $(TARGETS)
 
@@ -33,7 +33,7 @@ $(DEPENDDIR):
 
 %: %.cpp
 
-%: %.o
+t: t.o $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 %.o: %.cpp
