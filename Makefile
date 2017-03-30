@@ -25,7 +25,7 @@ all: $(TARGETS)
 DEPS = $(patsubst %.o,$(DEPENDDIR)/%.d,$(OBJS))
 -include $(DEPS)
 
-$(DEPENDDIR)/%.d: %.c $(DEPENDDIR)
+$(DEPENDDIR)/%.d: %.cpp $(DEPENDDIR)
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(DEPENDFLAGS) $< >$@
 
 $(DEPENDDIR):
