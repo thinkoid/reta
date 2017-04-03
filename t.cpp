@@ -7,7 +7,7 @@ using namespace std;
 
 #include "nfa.hpp"
 #include "dfa.hpp"
-#include "dot_graph.hpp"
+#include "dot-graph.hpp"
 
 #if 0
 #include <benchmark/benchmark.h>
@@ -90,10 +90,10 @@ int main (int, char** argv) {
     cout << "# --> postfixed : " << s << endl;
 
     const auto nfa = make_nfa (s);
-    cout << dot_graph_t (nfa).value () << "\n\n";
+    cout << dot_graph_t (nfa).value () << endl;
 
     const auto dfa = make_dfa (nfa);
-    cout << dot_graph_t (dfa).value () << "\n\n";
+    cout << dot_graph_t (dfa).value () << endl;
 
     return 0;
 }

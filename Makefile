@@ -2,12 +2,14 @@
 
 OSNAME = $(uname)
 
+WARNFLAGS = -W -Wall -Wno-parentheses
+
 BENCHMARK_CPPFLAGS = -I/usr/local/include
 BENCHMARK_LDFLAGS  = -L/usr/local/lib
 
 BENCHMARK_LIBS = -lbenchmark
 
-CXXFLAGS = -g -O -std=c++1z -W -Wall
+CXXFLAGS = -g -O -std=c++1z $(WARNFLAGS)
 
 ifeq ($(OSNAME),Linux)
   CXXFLAGS += -pthread
@@ -25,7 +27,7 @@ LIBS = $(BENCHMARK_LIBS)
 DEPENDDIR = ./.deps
 DEPENDFLAGS = -M
 
-SRCS := nfa.cpp dfa.cpp dot_graph.cpp
+SRCS := nfa.cpp dfa.cpp dot-graph.cpp
 OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 
 TARGETS = t

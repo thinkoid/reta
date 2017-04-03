@@ -6,13 +6,13 @@
 
 using namespace std;
 
-#include "dot_graph.hpp"
+#include "dot-graph.hpp"
 
 /* static */ string
-dot_graph_t::make_dot (const nfa_t& nfa) {
+dot_graph_t::make_dot (const nfa_t& nfa, const string& name) {
     stringstream ss;
 
-    ss << "#+BEGIN_SRC dot :file nfa.png :cmdline -Kdot -Tpng\n";
+    ss << "#+BEGIN_SRC dot :file " << name << ".png :cmdline -Kdot -Tpng\n";
     ss << "digraph nfa {\n";
 
     ss << "    start [shape=none;rank=0;];\n";
@@ -43,14 +43,14 @@ dot_graph_t::make_dot (const nfa_t& nfa) {
 }
 
 /* static */  string
-dot_graph_t::make_dot (const dfa_t& dfa) {
+dot_graph_t::make_dot (const dfa_t& dfa, const string& name) {
     stringstream ss;
 
-    ss << "#+BEGIN_SRC dot :file dfa.png :cmdline -Kdot -Tpng\n";
+    ss << "#+BEGIN_SRC dot :file " << name << ".png :cmdline -Kdot -Tpng\n";
     ss << "digraph dfa {\n";
 
     ss << "    start [shape=none;rank=0;];\n";
-    ss << "    start -> q0;\n";
+    ss << "    start -> q" << dfa.start << ";\n";
 
     for (size_t i = 0; i < dfa.states.size (); ++i) {
         const auto& transitions = dfa.states [i];
