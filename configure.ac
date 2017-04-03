@@ -1,0 +1,46 @@
+# -*- mode: autoconf -*-
+
+AC_INIT([reta],[0.0.1],)
+
+AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_AUX_DIR([m4])
+
+AM_INIT_AUTOMAKE([foreign -Wno-portability subdir-objects dist-bzip2 nostdinc])
+AC_CONFIG_HEADERS([include/reta/_config.hpp:include/reta/config.ac])
+
+AC_PROG_CXX
+AC_CONFIG_CXX_WARNINGS
+
+AC_ENABLE_CXX_DIALECT([c++1z])
+
+AC_PROG_LIBTOOL
+AC_PROG_MAKE_SET(gmake)
+AM_PROG_AS
+
+AC_CONFIG_WITH_RANGE3
+AC_CONFIG_WITH_BENCHMARK
+
+BOOST_REQUIRE
+BOOST_SMART_PTR
+BOOST_CHRONO
+BOOST_DATE_TIME
+BOOST_FILESYSTEM
+BOOST_IOSTREAMS
+BOOST_LOG
+BOOST_PROGRAM_OPTIONS
+BOOST_REGEX
+BOOST_SYSTEM
+BOOST_THREADS
+BOOST_TEST
+
+AM_CONDITIONAL([DARWIN],[test `uname` == Darwin])
+AM_CONDITIONAL([LINUX], [test `uname` == Linux])
+
+AC_CONFIG_FILES(Makefile)
+AC_CONFIG_FILES(include/Makefile)
+AC_CONFIG_FILES(src/Makefile)
+AC_CONFIG_FILES(examples/Makefile)
+AC_CONFIG_FILES(tests/Makefile)
+
+AC_OUTPUT()
+

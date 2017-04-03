@@ -1,14 +1,77 @@
 // -*- mode: c++; -*-
 
 #include <algorithm>
+#include <iostream>
+#include <iterator>
 #include <map>
+#include <numeric>
 #include <set>
 #include <string>
 #include <vector>
 
 using namespace std;
 
-#include "dfa.hpp"
+#include <reta/dfa.hpp>
+
+istream& operator>> (istream& ss, dfa_t& a) {
+    ss >> a.start;
+
+    size_t n;
+    ss >> n;
+
+    a.states.resize (n);
+
+    ss >> n;
+
+    for (size_t i = 0; i < n; ++i) {
+        int from, c, to;
+        ss >> from >> c >> to;
+
+        a.states [from].emplace_back (c, to);
+    }
+
+    ss >> n;
+
+    for (size_t i = 0, accept; i < n && ss >> accept; ++i)
+        a.accept.emplace_back (accept);
+
+    return ss;
+}
+
+ostream& operator<< (ostream& ss, const dfa_t& a) {
+    size_t from = 0;
+
+    ss << "0 " << a.states.size () << ' ' <<
+        accumulate (
+            a.states.begin (), a.states.end (), 0,
+            [](const auto memo, const auto& arg) {
+                return memo + arg.size ();
+            })
+       << ' ';
+
+    for (auto s : a.states) {
+        sort (s.begin (), s.end (), [](const auto& lhs, const auto& rhs) {
+                return
+                    lhs.first < rhs.first ||
+                    lhs.first == rhs.first && lhs.second < rhs.second;
+            });
+
+        for (const auto& t : s) {
+            const auto to = t.second;
+            ss << from << ' ' << t.first << ' ' << to << ' ';
+        }
+
+        ++from;
+    }
+
+    ss << a.accept.size () << ' ';
+
+    copy (
+        a.accept.begin (), a.accept.end (),
+        ostream_iterator< size_t > (ss, " "));
+
+    return ss;
+}
 
 namespace detail {
 
@@ -116,16 +179,17 @@ make_dfa (const nfa_t& nfa) {
     }
 
     dfa_t dfa { };
+    dfa.states.resize (state_counter);
 
     for (auto& t : dfa_state.transitions)
-        dfa.states.emplace_back (move (t.second));
+        dfa.states [t.first] = move (t.second);
 
     for (auto& t : dfa.states)
         sort (t.begin (), t.end (), [](const auto& lhs, const auto& rhs) {
                 return lhs.first < rhs.first;
             });
 
-    dfa.accept = dfa_state.accept;
+    dfa.accept = move (dfa_state.accept);
 
     auto& a = dfa.accept;
     sort (a.begin (), a.end ());

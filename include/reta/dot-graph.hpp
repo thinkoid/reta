@@ -7,8 +7,8 @@
 
 using namespace std;
 
-#include "nfa.hpp"
-#include "dfa.hpp"
+#include <reta/nfa.hpp>
+#include <reta/dfa.hpp>
 
 struct dot_graph_t {
     explicit dot_graph_t (const nfa_t& nfa, const string& name = "nfa")

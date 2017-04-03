@@ -20,7 +20,9 @@ struct nfa_t {
 };
 
 string postfix (const string&);
-
 nfa_t make_nfa (const string&);
+
+istream& operator>> (istream&, nfa_t&);
+ostream& operator<< (ostream&, const nfa_t&);
 
 #endif // RETA_NFA_HPP
