@@ -1,21 +1,33 @@
 # -*- mode: Makefile; -*-
 
+OSNAME = $(uname)
+
+WARNFLAGS = -W -Wall -Wno-parentheses
+
 BENCHMARK_CPPFLAGS = -I/usr/local/include
 BENCHMARK_LDFLAGS  = -L/usr/local/lib
 
 BENCHMARK_LIBS = -lbenchmark
 
-CXXFLAGS = -g -O -std=c++1z -W -Wall -pthread
+CXXFLAGS = -g -O -std=c++1z $(WARNFLAGS)
+
+ifeq ($(OSNAME),Linux)
+  CXXFLAGS += -pthread
+endif
 
 CPPFLAGS = $(BENCHMARK_CPPFLAGS)
-LDFLAGS = -pthread $(BENCHMARK_LDFLAGS)
+LDFLAGS  = $(BENCHMARK_LDFLAGS)
+
+ifeq ($(OSNAME),Linux)
+  LDFLAGS += -pthread
+endif
 
 LIBS = $(BENCHMARK_LIBS)
 
 DEPENDDIR = ./.deps
 DEPENDFLAGS = -M
 
-SRCS := nfa.cpp dfa.cpp dot_graph.cpp
+SRCS := nfa.cpp dfa.cpp dot-graph.cpp
 OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 
 TARGETS = t
@@ -42,5 +54,5 @@ t: t.o $(OBJS)
 .PHONY: clean
 
 clean:
-	rm -rf $(OBJS) $(TARGETS) $(DEPENDDIR)
+	rm -rf *.o $(OBJS) $(TARGETS) $(DEPENDDIR)
 

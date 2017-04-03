@@ -51,7 +51,7 @@ accepting (const nfa_t& nfa, const set< size_t >& c) {
     const auto& a = nfa.accept;
 
     return any_of (c.begin (), c.end (), [&](const auto n) {
-        return a.end () == find (a.begin (), a.end (), n);
+        return a.end () != find (a.begin (), a.end (), n);
     });
 }
 
@@ -115,7 +115,7 @@ make_dfa (const nfa_t& nfa) {
         closures = accum;
     }
 
-    dfa_t dfa;
+    dfa_t dfa { };
 
     for (auto& t : dfa_state.transitions)
         dfa.states.emplace_back (move (t.second));
