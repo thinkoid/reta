@@ -252,18 +252,6 @@ collect_input (const dfa_t& dfa, const vector< size_t >& states) {
     return unique_sorted (v);
 }
 
-static inline vector< int >
-collect_input (const dfa_t& dfa) {
-    vector< int > v;
-
-    for (const auto& t : dfa.states)
-        transform (
-            t.begin (), t.end (), back_inserter (v),
-            [](const auto& arg) { return arg.first; });
-
-    return unique_sorted (v);
-}
-
 static map< size_t, size_t >
 make_state_map (
     const vector< vector< size_t > >& a,
