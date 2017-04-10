@@ -30,6 +30,7 @@ config.sub
 configure
 depcomp
 depot
+examples/count-strings
 examples/reta
 examples/serial
 install-sh
